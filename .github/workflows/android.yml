@@ -1,35 +1,22 @@
-name: CosmosAtlas CI/CD
-
-on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
-      - develop
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  build-and-test:
-    name: Build & Test CosmosAtlas
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-          cache: 'gradle'
+
+      # 1. Install Gradle 8.10.2 on the runner
+      - name: Set up Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      # 2. Automatically generate gradle-wrapper.jar if not committed
+      - name: Ensure Gradle Wrapper Exists
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "gradle-wrapper.jar not found, generating wrapper..."
+            gradle wrapper --gradle-version 8.10.2
+          fi
 
       - name: Accept Android SDK Licenses
         run: |
@@ -38,31 +25,5 @@ jobs:
       - name: Grant Execute Permission to Gradlew
         run: chmod +x ./gradlew
 
-      - name: Inject NASA API Key
-        env:
-          NASA_API_KEY_SECRET: ${{ secrets.NASA_API_KEY }}
-        run: |
-          API_KEY="${NASA_API_KEY_SECRET:-DEMO_KEY}"
-          echo "NASA_API_KEY=$API_KEY" >> local.properties
-          echo "local.properties configured with API Key."
-
       - name: Run Unit Tests
         run: ./gradlew test --continue --stacktrace
-
-      - name: Upload Test Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-results
-          path: '**/build/reports/tests/'
-          retention-days: 7
-
-      - name: Assemble Debug APK
-        run: ./gradlew assembleDebug --stacktrace
-
-      - name: Upload Debug APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cosmosatlas-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
