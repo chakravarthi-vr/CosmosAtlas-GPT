@@ -1,0 +1,5 @@
+# CosmosAtlas Local Configuration
+# Copy this file to local.properties and add your NASA API key
+# Get a free API key at https://api.nasa.gov
+sdk.dir=/path/to/Android/Sdk
+NASA_API_KEY=DEMO_KEY
